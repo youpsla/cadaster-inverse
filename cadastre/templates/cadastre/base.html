@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cadastre Inversé</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+  {% load static %}
+  <script src="{% static 'app.js' %}" defer></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: system-ui, sans-serif; }
+    #layout { display: flex; height: 100vh; }
+    #sidebar {
+      width: 330px; min-width: 330px;
+      overflow-y: auto; padding: 16px;
+      border-right: 1px solid #ddd; background: #fafafa;
+    }
+    #map { flex: 1; height: 100vh; }
+    .form-group { margin-bottom: 12px; }
+    label { display: block; font-weight: 600; margin-bottom: 4px; font-size: 13px; color: #555; }
+    select, input { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+    button { width: 100%; padding: 10px; background: #2563eb; color: #fff; border: none; border-radius: 4px; font-size: 15px; cursor: pointer; }
+    button:hover { background: #1d4ed8; }
+    h1 { font-size: 18px; margin-bottom: 16px; }
+    #results { margin-top: 16px; }
+    .result-item {
+      padding: 10px 12px; margin-bottom: 8px;
+      border: 1px solid #e5e7eb; border-radius: 6px;
+      background: #fff; font-size: 13px; line-height: 1.5;
+    }
+    .result-item strong { font-size: 14px; }
+    .result-meta { color: #6b7280; font-size: 12px; }
+    .error { color: #dc2626; font-size: 14px; }
+    .count { color: #6b7280; font-size: 13px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+  <div id="layout">
+    <div id="sidebar">
+      <h1>Cadastre Inversé</h1>
+      <form id="search-form"
+            hx-get="{% url 'search' %}"
+            hx-target="#results"
+            hx-trigger="submit">
+        <div class="form-group">
+          <label for="departement">Département</label>
+          <select id="departement" name="departement"
+                  hx-get="{% url 'communes' %}"
+                  hx-target="#commune-container"
+                  hx-trigger="change">
+            <option value="">-- Choisir --</option>
+            {% for dep in departements %}
+              <option value="{{ dep.code }}">{{ dep.nom }} ({{ dep.code }})</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="commune">Commune</label>
+          <div id="commune-container">
+            <select id="commune" name="commune">
+              <option value="">-- Sélectionnez un département --</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="surface_min">Surface min (m²)</label>
+          <input type="number" id="surface_min" name="surface_min" min="0" placeholder="ex: 500" required>
+        </div>
+        <div class="form-group">
+          <label for="surface_max">Surface max (m²)</label>
+          <input type="number" id="surface_max" name="surface_max" min="0" placeholder="ex: 2000" required>
+        </div>
+        <button type="submit">Rechercher</button>
+      </form>
+      <div id="results"></div>
+    </div>
+    <div id="map"></div>
+  </div>
+</body>
+</html>

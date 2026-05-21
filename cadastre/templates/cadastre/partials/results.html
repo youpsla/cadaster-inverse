@@ -1,0 +1,18 @@
+{% if error %}
+  <div class="error">{{ error }}</div>
+{% else %}
+  <div class="count">{{ results|length }} résultat(s) pour la commune {{ commune }} ({{ surface_min }}–{{ surface_max }} m²)</div>
+  {% for r in results %}
+    <div class="result-item">
+      <strong>{{ r.adresse }}</strong><br>
+      <span class="result-meta">
+        Section {{ r.section }} n°{{ r.numero }} — {{ r.contenance }} m² — IDU {{ r.idu }}
+      </span>
+    </div>
+  {% empty %}
+    <div>Aucune parcelle trouvée.</div>
+  {% endfor %}
+{% endif %}
+{% if geojson %}
+<script id="parcels-data" type="application/json">{{ geojson|safe }}</script>
+{% endif %}

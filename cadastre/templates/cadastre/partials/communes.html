@@ -1,0 +1,6 @@
+<select id="commune" name="commune">
+  <option value="">-- Choisir une commune --</option>
+  {% for commune in communes %}
+    <option value="{{ commune.code_insee }}">{{ commune.nom }}</option>
+  {% endfor %}
+</select>

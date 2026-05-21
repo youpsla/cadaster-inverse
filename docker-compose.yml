@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgis/postgis:16-3.5
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: cadastre
+      POSTGRES_USER: cadastre
+      POSTGRES_PASSWORD: cadastre
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cadastre"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    command: >
+      sh -c "uv run python manage.py migrate &&
+             uv run python manage.py import_parcelles --dir /data/parcelles 2>/dev/null; true &&
+             uv run gunicorn config.wsgi -b 0.0.0.0:8000"
+    volumes:
+      - ./data:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file:
+      - .env
+
+volumes:
+  pgdata:
