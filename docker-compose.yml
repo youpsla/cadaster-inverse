@@ -1,6 +1,7 @@
 services:
   db:
     image: postgis/postgis:16-3.5
+    platform: linux/amd64
     volumes:
       - pgdata:/var/lib/postgresql/data
     environment:

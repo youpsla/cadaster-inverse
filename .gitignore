@@ -5,5 +5,8 @@ __pycache__/
 .env
 staticfiles/
 .superpowers/
-.data/
 *.sqlite3
+
+# Large source files at root
+/cadastre-01001-parcelles.json
+.memsearch/

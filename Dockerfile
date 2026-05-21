@@ -9,7 +9,7 @@ WORKDIR /app
 RUN pip install uv
 
 COPY pyproject.toml .
-RUN uv sync --frozen
+RUN uv sync
 
 COPY . .
 RUN uv run python manage.py collectstatic --noinput
