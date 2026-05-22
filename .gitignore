@@ -10,3 +10,6 @@ staticfiles/
 # Large source files at root
 /cadastre-01001-parcelles.json
 .memsearch/
+import_*_bulk.py
+data/adresses/*.csv
+data/parcelles/*.json.gz

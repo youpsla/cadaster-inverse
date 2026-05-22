@@ -20,7 +20,6 @@ services:
     build: .
     command: >
       sh -c "uv run python manage.py migrate &&
-             uv run python manage.py import_parcelles --dir /data/parcelles 2>/dev/null; true &&
              uv run gunicorn config.wsgi -b 0.0.0.0:8000"
     volumes:
       - ./data:/data
