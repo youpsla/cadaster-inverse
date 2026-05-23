@@ -1,0 +1,6 @@
+User-agent: *
+Disallow: /admin/
+Disallow: /communes/
+Disallow: /search/
+
+Sitemap: {{ request.scheme }}://{{ request.get_host }}{% url 'sitemap-index' %}

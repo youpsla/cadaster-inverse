@@ -6,6 +6,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-dev-key-change-in-prod")
 DEBUG = os.environ.get("DEBUG", "true").lower() == "true"
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "*").split(",")
+CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",") if o]
+
+if not DEBUG:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
 
 DATABASES = {
     "default": {
@@ -18,6 +25,8 @@ DATABASES = {
     }
 }
 
+SITE_ID = 1
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -26,6 +35,8 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django.contrib.gis",
+    "django.contrib.sites",
+    "django.contrib.sitemaps",
     "django_htmx",
     "cadastre",
 ]
@@ -72,5 +83,8 @@ USE_TZ = True
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+WHITENOISE_USE_FINDERS = DEBUG
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
