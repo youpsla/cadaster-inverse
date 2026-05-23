@@ -1,9 +1,9 @@
 {% if error %}
   <div class="error">{{ error }}</div>
 {% else %}
-  <div class="count">{{ results|length }} résultat(s) pour la commune {{ commune }} ({{ surface_min }}–{{ surface_max }} m²)</div>
+  <div class="count">{{ results|length }} résultat(s) pour {{ commune }} — {{ surface_label }} m²</div>
   {% for r in results %}
-    <div class="result-item">
+    <div class="result-item" data-idu="{{ r.idu }}">
       <strong>{{ r.adresse }}</strong><br>
       <span class="result-meta">
         Section {{ r.section }} n°{{ r.numero }} — {{ r.contenance }} m² — IDU {{ r.idu }}
