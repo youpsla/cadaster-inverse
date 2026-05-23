@@ -26,31 +26,58 @@ def communes(request):
 
 def search(request):
     commune_code = request.GET.get("commune", "")
-    surface_min = request.GET.get("surface_min", "")
-    surface_max = request.GET.get("surface_max", "")
+    surface_mode = request.GET.get("surface_mode", "exact")
 
-    if not commune_code or not surface_min or not surface_max:
+    if not commune_code:
         return render(
             request,
             "cadastre/partials/results.html",
             {"results": [], "error": "Veuillez remplir tous les champs."},
         )
 
-    try:
-        surface_min = int(surface_min)
-        surface_max = int(surface_max)
-    except (ValueError, TypeError):
-        return render(
-            request,
-            "cadastre/partials/results.html",
-            {"results": [], "error": "Surfaces invalides."},
-        )
+    filter_kwargs = {"commune_id": commune_code, "has_address": True}
+    surface_label = ""
 
-    parcelles = Parcelle.objects.filter(
-        commune_id=commune_code,
-        contenance__gte=surface_min,
-        contenance__lte=surface_max,
-    ).select_related("commune__departement")
+    if surface_mode == "range":
+        surface_min = request.GET.get("surface_min", "")
+        surface_max = request.GET.get("surface_max", "")
+        if not surface_min or not surface_max:
+            return render(
+                request,
+                "cadastre/partials/results.html",
+                {"results": [], "error": "Veuillez saisir les surfaces min et max."},
+            )
+        try:
+            filter_kwargs["contenance__gte"] = int(surface_min)
+            filter_kwargs["contenance__lte"] = int(surface_max)
+        except (ValueError, TypeError):
+            return render(
+                request,
+                "cadastre/partials/results.html",
+                {"results": [], "error": "Surfaces invalides."},
+            )
+        surface_label = f"{surface_min}–{surface_max}"
+    else:
+        surface = request.GET.get("surface", "")
+        if not surface:
+            return render(
+                request,
+                "cadastre/partials/results.html",
+                {"results": [], "error": "Veuillez saisir une surface."},
+            )
+        try:
+            filter_kwargs["contenance"] = int(surface)
+        except (ValueError, TypeError):
+            return render(
+                request,
+                "cadastre/partials/results.html",
+                {"results": [], "error": "Surface invalide."},
+            )
+        surface_label = f"{surface}"
+
+    commune_name = Commune.objects.filter(code_insee=commune_code).values_list("nom", flat=True).first() or commune_code
+
+    parcelles = Parcelle.objects.filter(**filter_kwargs).select_related("commune__departement")
 
     results = []
     geojson_features = []
@@ -58,7 +85,7 @@ def search(request):
     for parcelle in parcelles:
         adresses = Adresse.objects.filter(parcelles_rel__parcelle_id=parcelle.idu)
         adresses_list = [
-            f"{a.numero} {a.rep} {a.nom_voie}".strip().replace("  ", " ")
+            f"{a.numero} {a.nom_voie}".strip()
             + f", {a.code_postal} {a.nom_commune}"
             for a in adresses
         ]
@@ -101,13 +128,10 @@ def search(request):
         "cadastre/partials/results.html",
         {
             "results": results,
-            "commune": commune_code,
-            "surface_min": surface_min,
-            "surface_max": surface_max,
+            "commune": commune_name,
+            "surface_label": surface_label,
             "geojson": geojson,
         },
     )
-
-    response["HX-Trigger"] = json.dumps({"mapUpdate": {"geojson": geojson}})
 
     return response

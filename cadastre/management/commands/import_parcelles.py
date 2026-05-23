@@ -66,13 +66,9 @@ class Command(BaseCommand):
                 defaults={
                     "geometry": GEOSGeometry(json.dumps(feature["geometry"])),
                     "contenance": props.get("contenance", 0),
-                    "prefixe": props.get("prefixe", ""),
                     "section": props.get("section", ""),
                     "numero": props.get("numero", ""),
-                    "arpente": props.get("arpente", False),
                     "commune_id": commune_code,
-                    "created": props.get("created"),
-                    "updated": props.get("updated"),
                 },
             )
             if was_created:

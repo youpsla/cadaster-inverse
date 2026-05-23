@@ -50,8 +50,7 @@ class Command(BaseCommand):
                 if not id_ban:
                     continue
 
-                lon = self._safe_float(row.get("lon"))
-                lat = self._safe_float(row.get("lat"))
+
 
                 Adresse.objects.update_or_create(
                     id_ban=id_ban,
@@ -62,37 +61,13 @@ class Command(BaseCommand):
                         "code_postal": row.get("code_postal", ""),
                         "code_insee": row.get("code_insee", ""),
                         "nom_commune": row.get("nom_commune", ""),
-                        "lon": lon,
-                        "lat": lat,
-                        "cad_parcelles": row.get("cad_parcelles", ""),
                     },
                 )
                 adresses_count += 1
-
-                cad_parcelles_raw = row.get("cad_parcelles", "")
-                if cad_parcelles_raw:
-                    idu_list = [
-                        idu.strip()
-                        for idu in cad_parcelles_raw.split("|")
-                        if idu.strip()
-                    ]
-                    for idu in idu_list:
-                        parcel_exists = Parcelle.objects.filter(idu=idu).exists()
-                        if parcel_exists:
-                            _, created = ParcelleAdresse.objects.get_or_create(
-                                parcelle_id=idu,
-                                adresse_id=id_ban,
-                            )
-                            if created:
-                                links_count += 1
 
         self.stdout.write(
             f"  {filepath.name}: {adresses_count} adresses, {links_count} links"
         )
         return adresses_count, links_count
 
-    def _safe_float(self, value):
-        try:
-            return float(value) if value else None
-        except (ValueError, TypeError):
-            return None
+

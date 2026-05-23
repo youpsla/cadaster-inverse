@@ -31,15 +31,12 @@ class Parcelle(models.Model):
     idu = models.CharField(max_length=14, primary_key=True)
     geometry = models.PolygonField(spatial_index=True)
     contenance = models.IntegerField(db_index=True)
-    prefixe = models.CharField(max_length=3)
     section = models.CharField(max_length=2)
     numero = models.CharField(max_length=4)
-    arpente = models.BooleanField(default=False)
+    has_address = models.BooleanField(default=False, db_index=True)
     commune = models.ForeignKey(
         Commune, on_delete=models.CASCADE, related_name="parcelles"
     )
-    created = models.DateField(null=True, blank=True)
-    updated = models.DateField(null=True, blank=True)
 
     class Meta:
         indexes = [
@@ -58,9 +55,6 @@ class Adresse(models.Model):
     code_postal = models.CharField(max_length=5, blank=True, default="")
     code_insee = models.CharField(max_length=5, blank=True, default="")
     nom_commune = models.CharField(max_length=200, blank=True, default="")
-    lon = models.FloatField(null=True, blank=True)
-    lat = models.FloatField(null=True, blank=True)
-    cad_parcelles = models.TextField(blank=True, default="")
 
     def __str__(self):
         parts = [self.numero, self.nom_voie, self.code_postal, self.nom_commune]
