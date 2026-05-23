@@ -1,0 +1,14 @@
+.venv
+.venv/
+__pycache__/
+*.pyc
+.git/
+.memsearch/
+.superpowers/
+.idea/
+.vscode/
+*.sqlite3
+data/adresses/*.csv
+data/parcelles/*.json.gz
+data/snapshots/
+*.md
