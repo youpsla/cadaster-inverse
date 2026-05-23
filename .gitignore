@@ -13,3 +13,4 @@ staticfiles/
 import_*_bulk.py
 data/adresses/*.csv
 data/parcelles/*.json.gz
+data/snapshots/
