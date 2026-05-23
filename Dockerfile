@@ -1,14 +1,14 @@
 FROM python:3.13-slim
 
 RUN apt-get update && apt-get install -y \
-    gdal-bin libgdal-dev \
+    gdal-bin libgdal-dev curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 RUN pip install uv
 
-COPY pyproject.toml .
+COPY pyproject.toml uv.lock .
 RUN uv sync --frozen
 
 COPY . .
