@@ -1,0 +1,18 @@
+{% extends "cadastre/base.html" %}
+{% load static %}
+{% block sidebar_header %}
+<h1>Cadastre Inversé</h1>
+{% endblock %}
+{% block pre_form %}
+<div class="seo-content">
+  <p>Recherchez une parcelle cadastrale par sa surface et retrouvez son adresse exacte.</p>
+  <p><strong>{{ nb_parcelles }} parcelles</strong> avec adresses référencées dans <strong>{{ nb_communes }} communes</strong>.</p>
+  <div style="margin-top:12px">
+    {% for dep in departements %}
+    <a class="dep-link" href="{% url 'departement' dep_slug=dep.nom|slugify %}">
+      {{ dep.nom }} ({{ dep.code }})
+    </a>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

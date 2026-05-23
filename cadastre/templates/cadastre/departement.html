@@ -1,0 +1,24 @@
+{% extends "cadastre/base.html" %}
+{% block sidebar_header %}
+<div class="breadcrumbs">
+  <a href="{% url 'landing' %}">Accueil</a> &rsaquo; {{ departement.nom }}
+</div>
+<h1>{{ departement.nom }} ({{ departement.code }})</h1>
+{% endblock %}
+{% block pre_form %}
+<div class="seo-content">
+  <p>{{ nb_parcelles }} parcelles avec adresses dans {{ communes|length }} communes.</p>
+  {% if communes %}
+  <p>Consultez les parcelles d'une commune :</p>
+  <ul>
+    {% for com in communes %}
+    <li>
+      <a href="{% url 'commune' dep_slug=departement.nom|slugify commune_slug=com.nom|slugify %}">
+        {{ com.nom }}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+{% endblock %}

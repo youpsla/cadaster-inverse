@@ -3,7 +3,36 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cadastre Inversé</title>
+  <title>{% block title %}{% if meta %}{{ meta.title }}{% else %}Cadastre Inversé{% endif %}{% endblock %}</title>
+  {% if meta %}{% with m=meta %}
+  <meta name="description" content="{{ m.description }}">
+  <meta property="og:title" content="{{ m.og_title }}">
+  <meta property="og:description" content="{{ m.description }}">
+  <meta property="og:type" content="{{ m.og_type }}">
+  <meta property="og:locale" content="{{ m.og_locale }}">
+  {% if m.og_url %}<meta property="og:url" content="{{ m.og_url }}">{% endif %}
+  <meta name="twitter:card" content="{{ m.twitter_card }}">
+  <link rel="canonical" href="{% firstof m.og_url request.build_absolute_uri %}">
+  {% endwith %}{% endif %}
+  {% if breadcrumbs %}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {% for crumb in breadcrumbs %}
+      {
+        "@type": "ListItem",
+        "position": {{ forloop.counter }},
+        "name": "{{ crumb.name|escapejs }}",
+        "item": "{{ crumb.url }}"
+      }{% if not forloop.last %},{% endif %}
+      {% endfor %}
+    ]
+  }
+  </script>
+  {% endif %}
+  {% block extra_head %}{% endblock %}
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
@@ -31,16 +60,35 @@
       border: 1px solid #e5e7eb; border-radius: 6px;
       background: #fff; font-size: 13px; line-height: 1.5;
     }
+    .result-item.selected { background: #dbeafe; border-color: #2563eb; }
     .result-item strong { font-size: 14px; }
     .result-meta { color: #6b7280; font-size: 12px; }
     .error { color: #dc2626; font-size: 14px; }
     .count { color: #6b7280; font-size: 13px; margin-bottom: 8px; }
+    .surface-toggle { display: flex; margin-bottom: 8px; border: 1px solid #ccc; border-radius: 6px; overflow: hidden; }
+    .surface-toggle label { flex: 1; text-align: center; padding: 7px 0; font-size: 13px; font-weight: 500; cursor: pointer; background: #fff; color: #555; border-right: 1px solid #ccc; transition: none; }
+    .surface-toggle label:last-child { border-right: none; }
+    .surface-toggle label:has(input:checked) { background: #2563eb; color: #fff; }
+    .seo-content { margin-bottom: 16px; font-size: 13px; color: #555; line-height: 1.5; }
+    .seo-content h2 { font-size: 15px; margin-bottom: 8px; color: #222; }
+    .seo-content p { margin-bottom: 8px; }
+    .seo-content a { color: #2563eb; text-decoration: none; }
+    .seo-content a:hover { text-decoration: underline; }
+    .seo-content ul { padding-left: 16px; margin-bottom: 8px; }
+    .dep-link { display: block; padding: 8px 12px; margin-bottom: 6px; background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; color: #222; text-decoration: none; font-size: 14px; }
+    .dep-link:hover { border-color: #2563eb; background: #eff6ff; }
+    .breadcrumbs { font-size: 12px; color: #6b7280; margin-bottom: 8px; }
+    .breadcrumbs a { color: #6b7280; text-decoration: underline; }
+    .breadcrumbs a:hover { color: #2563eb; }
   </style>
 </head>
 <body>
   <div id="layout">
     <div id="sidebar">
+      {% block sidebar_header %}
       <h1>Cadastre Inversé</h1>
+      {% endblock %}
+      {% block pre_form %}{% endblock %}
       <form id="search-form"
             hx-get="{% url 'search' %}"
             hx-target="#results"
@@ -53,25 +101,40 @@
                   hx-trigger="change">
             <option value="">-- Choisir --</option>
             {% for dep in departements %}
-              <option value="{{ dep.code }}">{{ dep.nom }} ({{ dep.code }})</option>
+              <option value="{{ dep.code }}" {% if selected_dep == dep.code %}selected{% endif %}>{{ dep.code }} - {{ dep.nom }}</option>
             {% endfor %}
           </select>
         </div>
         <div class="form-group">
           <label for="commune">Commune</label>
           <div id="commune-container">
+            {% if selected_dep_communes %}
+            <select id="commune" name="commune">
+              <option value="">-- Choisir une commune --</option>
+              {% for com in selected_dep_communes %}
+                <option value="{{ com.code_insee }}" {% if selected_com == com.code_insee %}selected{% endif %}>{{ com.nom }}</option>
+              {% endfor %}
+            </select>
+            {% else %}
             <select id="commune" name="commune">
               <option value="">-- Sélectionnez un département --</option>
             </select>
+            {% endif %}
           </div>
         </div>
         <div class="form-group">
-          <label for="surface_min">Surface min (m²)</label>
-          <input type="number" id="surface_min" name="surface_min" min="0" placeholder="ex: 500" required>
-        </div>
-        <div class="form-group">
-          <label for="surface_max">Surface max (m²)</label>
-          <input type="number" id="surface_max" name="surface_max" min="0" placeholder="ex: 2000" required>
+          <label>Surface</label>
+          <div class="surface-toggle">
+            <label><input type="radio" name="surface_mode" value="exact" checked hidden> Surface exacte</label>
+            <label><input type="radio" name="surface_mode" value="range" hidden> Fourchette</label>
+          </div>
+          <div id="surface-exact">
+            <input type="number" id="surface" name="surface" min="0" placeholder="ex: 1000" required>
+          </div>
+          <div id="surface-range" style="display:none">
+            <input type="number" id="surface_min" name="surface_min" min="0" placeholder="Min (ex: 500)" required>
+            <input type="number" id="surface_max" name="surface_max" min="0" placeholder="Max (ex: 2000)" required>
+          </div>
         </div>
         <button type="submit">Rechercher</button>
       </form>

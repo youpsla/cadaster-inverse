@@ -1,0 +1,15 @@
+{% extends "cadastre/base.html" %}
+{% block sidebar_header %}
+<div class="breadcrumbs">
+  <a href="{% url 'landing' %}">Accueil</a> &rsaquo;
+  <a href="{% url 'departement' dep_slug=departement.nom|slugify %}">{{ departement.nom }}</a> &rsaquo;
+  {{ commune.nom }}
+</div>
+<h1>{{ commune.nom }} ({{ commune.code_postal }})</h1>
+{% endblock %}
+{% block pre_form %}
+<div class="seo-content">
+  <p>{{ nb_parcelles }} parcelles avec adresses référencées.</p>
+  <p>Saisissez une surface pour rechercher les parcelles correspondantes à {{ commune.nom }}.</p>
+</div>
+{% endblock %}

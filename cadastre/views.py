@@ -1,17 +1,130 @@
 import json
 
+from django.http import Http404
 from django.shortcuts import render
+from django.urls import reverse
+from django.utils.text import slugify
 from django.contrib.gis.geos import GEOSGeometry
 
 from .models import Adresse, Commune, Departement, Parcelle
 
 
-def index(request):
+def _get_departement_by_slug(slug):
+    for dep in Departement.objects.all():
+        if slugify(dep.nom) == slug:
+            return dep
+    return None
+
+
+def _get_commune_by_slug(dep, slug):
+    for com in Commune.objects.filter(departement=dep):
+        if slugify(com.nom) == slug:
+            return com
+    return None
+
+
+def _meta(title, description, og_title=None, url=None):
+    return {
+        "title": title,
+        "description": description,
+        "og_title": og_title or title,
+        "og_type": "website",
+        "og_locale": "fr_FR",
+        "og_url": url or "",
+        "twitter_card": "summary_large_image",
+    }
+
+
+def landing(request):
     departements = Departement.objects.all()
+    nb_parcelles = Parcelle.objects.filter(has_address=True).count()
+    nb_communes = Commune.objects.count()
     context = {
         "departements": departements,
+        "nb_parcelles": nb_parcelles,
+        "nb_communes": nb_communes,
+        "meta": _meta(
+            title="Cadastre Inversé — Trouvez un bien par la surface de sa parcelle",
+            description=(
+                f"Recherchez une parcelle cadastrale par sa surface. "
+                f"{nb_parcelles:,} parcelles avec adresses référencées "
+                f"dans {nb_communes:,} communes."
+            ),
+        ),
     }
-    return render(request, "cadastre/base.html", context)
+    return render(request, "cadastre/landing.html", context)
+
+
+def departement(request, dep_slug):
+    dep = _get_departement_by_slug(dep_slug)
+    if dep is None:
+        raise Http404
+    communes = Commune.objects.filter(departement=dep)
+    nb_parcelles = Parcelle.objects.filter(
+        commune__departement=dep, has_address=True
+    ).count()
+    context = {
+        "departement": dep,
+        "communes": communes,
+        "nb_parcelles": nb_parcelles,
+        "meta": _meta(
+            title=f"Cadastre Inversé — {dep.nom} ({dep.code})",
+            description=(
+                f"Consultez les parcelles cadastrales du {dep.nom} ({dep.code}). "
+                f"{nb_parcelles:,} parcelles avec adresses "
+                f"dans {communes.count()} communes."
+            ),
+            url=request.build_absolute_uri(),
+        ),
+        "breadcrumbs": [
+            {"name": "Accueil", "url": request.build_absolute_uri(reverse("landing"))},
+            {"name": dep.nom, "url": request.build_absolute_uri()},
+        ],
+        "selected_dep": dep.code,
+        "selected_dep_communes": communes,
+        "departements": Departement.objects.all(),
+    }
+    return render(request, "cadastre/departement.html", context)
+
+
+def commune(request, dep_slug, commune_slug):
+    dep = _get_departement_by_slug(dep_slug)
+    if dep is None:
+        raise Http404
+    com = _get_commune_by_slug(dep, commune_slug)
+    if com is None:
+        raise Http404
+    communes = Commune.objects.filter(departement=dep)
+    nb_parcelles = Parcelle.objects.filter(commune=com, has_address=True).count()
+    context = {
+        "commune": com,
+        "departement": dep,
+        "nb_parcelles": nb_parcelles,
+        "meta": _meta(
+            title=f"Recherche par surface de parcelle à {com.nom} ({com.code_postal})",
+            description=(
+                f"Trouvez une parcelle cadastrale par sa surface "
+                f"à {com.nom} ({com.code_postal}). "
+                f"{nb_parcelles:,} parcelles avec adresses référencées."
+            ),
+            url=request.build_absolute_uri(),
+        ),
+        "breadcrumbs": [
+            {"name": "Accueil", "url": request.build_absolute_uri(reverse("landing"))},
+            {
+                "name": dep.nom,
+                "url": request.build_absolute_uri(
+                    reverse("departement", kwargs={"dep_slug": dep_slug})
+                ),
+            },
+            {"name": com.nom, "url": request.build_absolute_uri()},
+        ],
+        "selected_dep": dep.code,
+        "selected_dep_communes": communes,
+        "selected_com": com.code_insee,
+        "departements": Departement.objects.all(),
+    }
+    return render(request, "cadastre/commune.html", context)
 
 
 def communes(request):
