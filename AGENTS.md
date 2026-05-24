@@ -3,6 +3,7 @@
 ## Stack
 Django 6, PostgreSQL 16 + PostGIS, HTMX (+ django-htmx), Leaflet/OSM, uv, Docker, gunicorn
 Nothing installed on host — everything runs in Docker
+Production VPS : Debian 12 + Docker Engine (évite les frictions Podman : ports <1024, compose non natif)
 
 ## Quick Start
 docker compose up -d            # start PostGIS + web
@@ -122,6 +123,16 @@ WhiteNoise serves them behind Caddy. No nginx needed for static files.
 
 Caddy handles HTTPS (Let's Encrypt) automatically on ports 80/443.
 The Caddyfile uses `{$DOMAIN:localhost}` — empty `$DOMAIN` = localhost (no TLS).
+
+### Gotchas
+
+- Compose v5 exige un fichier `.env` à la racine — créer un lien symbolique `.env -> .env.prod`
+- Le mot de passe DB du dev compose (`cadastre`) entre en conflit avec `.env.prod` — après initialisation, le volume pgdata garde l'ancien password
+- `SECURE_SSL_REDIRECT = True` hardcodé dans settings.py — pour tester sans Caddy : `curl -H 'X-Forwarded-Proto: https'`
+- Healthcheck du web doit inclure `-H 'X-Forwarded-Proto: https'` sinon le redirect SSL le casse
+- Caddyfile : ajouter un bloc `www.{$DOMAIN:localhost}` avec redirection permanente vers l'apex
+- Après `Site.objects.update(domain=...)`, faire `docker compose restart web` (cache gunicorn)
+- `docker compose down web` recrée aussi db (dépendance) → préférer `docker compose stop/start web`
 
 ## Dev Environment
 
