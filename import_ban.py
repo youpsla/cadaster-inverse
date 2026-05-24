@@ -45,6 +45,8 @@ with open(path, encoding="utf-8") as f:
         if len(rows) >= BATCH:
             flush()
             count += BATCH
+            print(f"\r-- {count} adresses   ", file=sys.stderr, end="", flush=True)
 
 flush()
+print(file=sys.stderr)
 print(f"-- Done: {count + len(rows)} adresses", file=sys.stderr)

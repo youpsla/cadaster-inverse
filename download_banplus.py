@@ -61,7 +61,7 @@ def main():
 
     while True:
         url = build_url(dep_code, startindex)
-        print(f"-- Page: startindex={startindex}", file=sys.stderr, flush=True)
+        print(f"\r-- Page: startindex={startindex}", file=sys.stderr, end="", flush=True)
 
         req = Request(url, headers={"User-Agent": "opencode-cadastre/1.0"})
         resp = urlopen(req)
@@ -72,7 +72,7 @@ def main():
         number_matched = int(root.get("numberMatched", 0))
 
         if startindex == 0:
-            print(f"-- Total liens: {number_matched}", file=sys.stderr)
+            print(f"\r-- Total: {number_matched} liens   ", file=sys.stderr)
 
         for lien in root.findall(".//{http://BAN-PLUS}lien_adresse_parcelle"):
             idu_el = lien.find("bp:idu", NS)
@@ -90,7 +90,7 @@ def main():
         flush()
 
         total += number_returned
-        print(f"--  {total}/{number_matched} liens processed", file=sys.stderr, flush=True)
+        print(f"\r--  {total}/{number_matched} liens   ", file=sys.stderr, end="", flush=True)
 
         if number_returned < PAGE_SIZE:
             break
@@ -98,6 +98,7 @@ def main():
         startindex += PAGE_SIZE
         time.sleep(0.3)
 
+    print(file=sys.stderr)
     print(f"-- Done: {total} liens for dep {dep_code}", file=sys.stderr)
 
 

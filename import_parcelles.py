@@ -88,7 +88,8 @@ for feat in features:
     if len(rows) >= BATCH:
         flush()
         count += BATCH
-        print(f"-- {count}/{len(features)}", file=sys.stderr, flush=True)
+        print(f"\r-- {count}/{len(features)} parcelles   ", file=sys.stderr, end="", flush=True)
 
 flush()
+print(file=sys.stderr)
 print(f"-- Done: {count + len(rows)} parcelles", file=sys.stderr)
