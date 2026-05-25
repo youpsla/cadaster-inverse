@@ -57,8 +57,10 @@ echo "[$DEP] Marking parcels with addresses..."
 docker compose exec -T db psql -U cadastre -c "
 UPDATE cadastre_parcelle
 SET has_address = true
-WHERE idu IN (
+WHERE idu LIKE '${DEP}%'
+AND idu IN (
   SELECT DISTINCT parcelle_id FROM cadastre_parcelleadresse
+  WHERE parcelle_id LIKE '${DEP}%'
 );
 "
 
