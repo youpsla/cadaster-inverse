@@ -49,6 +49,10 @@ WHERE idu IN (SELECT DISTINCT parcelle_id FROM cadastre_parcelleadresse);
 "
 
 echo ""
+echo "[5/5] Recomputing department parcelle counts..."
+docker compose exec web uv run python manage.py recompute_counts "$DEP"
+
+echo ""
 echo "=== Done: commune $COMMUNE ==="
 docker compose exec -T db psql -U cadastre -c "
 SELECT 'Parcelles' t, count(*) FROM cadastre_parcelle

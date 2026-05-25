@@ -4,6 +4,7 @@ from django.http import Http404
 from django.shortcuts import render
 from django.urls import reverse
 from django.utils.text import slugify
+from django.views.decorators.cache import cache_page
 from django.contrib.gis.geos import GEOSGeometry
 
 from .models import Adresse, Commune, Departement, Parcelle
@@ -36,6 +37,7 @@ def _meta(title, description, og_title=None, url=None):
     }
 
 
+@cache_page(60 * 60)
 def landing(request):
     departements = Departement.objects.all()
     nb_parcelles = Parcelle.objects.filter(has_address=True).count()
@@ -57,14 +59,13 @@ def landing(request):
     return render(request, "cadastre/landing.html", context)
 
 
+@cache_page(60 * 60)
 def departement(request, dep_slug):
     dep = _get_departement_by_slug(dep_slug)
     if dep is None:
         raise Http404
     communes = Commune.objects.filter(departement=dep)
-    nb_parcelles = Parcelle.objects.filter(
-        commune__departement=dep, has_address=True
-    ).count()
+    nb_parcelles = dep.nb_parcelles_adresse
     context = {
         "departement": dep,
         "communes": communes,
@@ -90,6 +91,7 @@ def departement(request, dep_slug):
     return render(request, "cadastre/departement.html", context)
 
 
+@cache_page(60 * 60)
 def commune(request, dep_slug, commune_slug):
     dep = _get_departement_by_slug(dep_slug)
     if dep is None:

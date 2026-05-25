@@ -65,6 +65,10 @@ AND idu IN (
 "
 
 echo ""
+echo "[$DEP] Recomputing department parcelle counts..."
+docker compose exec web uv run python manage.py recompute_counts "$DEP"
+
+echo ""
 echo "[$DEP] Done ==="
 docker compose exec -T db psql -U cadastre -c "
 SELECT 'Parcelles' t, count(*) FROM cadastre_parcelle

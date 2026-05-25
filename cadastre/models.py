@@ -4,6 +4,7 @@ from django.contrib.gis.db import models
 class Departement(models.Model):
     code = models.CharField(max_length=3, primary_key=True)
     nom = models.CharField(max_length=100)
+    nb_parcelles_adresse = models.IntegerField(default=0)
 
     class Meta:
         ordering = ["code"]
@@ -41,6 +42,7 @@ class Parcelle(models.Model):
     class Meta:
         indexes = [
             models.Index(fields=["commune", "contenance"]),
+            models.Index(fields=["commune", "has_address"]),
         ]
 
     def __str__(self):
