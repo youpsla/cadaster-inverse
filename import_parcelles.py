@@ -77,12 +77,12 @@ for feat in features:
             f"('{com_code}', '{com_code}', '{com_code[:2]}000', '{dep_code}') ON CONFLICT DO NOTHING;"
         )
         seen_coms.add(com_code)
-    g = json.dumps(feat["geometry"]).replace("'", "''")
+    g = json.dumps(feat["geometry"])
     c = p.get("contenance", 0)
     sec = (p.get("section") or "").replace("'", "''")
     num = (p.get("numero") or "").replace("'", "''")
     rows.append(
-        f"('{idu}', ST_GeomFromGeoJSON('{g}'), {c}, '{sec}', "
+        f"('{idu}', ST_GeomFromGeoJSON($g${g}$g$), {c}, '{sec}', "
         f"'{num}', '{com_code}', false)"
     )
     if len(rows) >= BATCH:
