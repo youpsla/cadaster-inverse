@@ -62,6 +62,8 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 - Event listeners on HTMX-swapped content: use document.body delegation, not direct DOM attachment
 - Reset selection state (selectedIdu, layerMap) on every updateMap() call
 - Models: Departement, Commune, Parcelle (PolygonField), Adresse, ParcelleAdresse (M2M)
+- PolygonField uses spatial_index=False — no frontend view uses PostGIS spatial queries (GiST is pure overhead)
+- FK index redundant when composite covers leftmost column — use db_index=False to suppress
 - Parcelle.idu is CharField(max_length=14) — test data must not exceed 14 chars
 - Address ↔ Parcel linkage: ParcelleAdresse junction table from BAN-PLUS WFS (not BAN CSV cad_parcelles)
 - Parcelle.has_address boolean flag; set via UPDATE after import, used to filter habitat-only parcels
@@ -142,6 +144,7 @@ The Caddyfile uses `{$DOMAIN:localhost}` — empty `$DOMAIN` = localhost (no TLS
 - Caddyfile : ajouter un bloc `www.{$DOMAIN:localhost}` avec redirection permanente vers l'apex
 - Après `Site.objects.update(domain=...)`, faire `docker compose restart web` (cache gunicorn)
 - `docker compose down web` recrée aussi db (dépendance) → préférer `docker compose stop/start web`
+- Migration avec web arrêté sur le VPS : utiliser `docker compose run --rm web` (pas `exec`, le container n'existe plus)
 
 ## Dev Environment
 
