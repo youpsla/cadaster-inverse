@@ -29,13 +29,13 @@ class Commune(models.Model):
 
 class Parcelle(models.Model):
     idu = models.CharField(max_length=14, primary_key=True)
-    geometry = models.PolygonField(spatial_index=True)
+    geometry = models.PolygonField(spatial_index=False)
     contenance = models.IntegerField(db_index=True)
     section = models.CharField(max_length=2)
     numero = models.CharField(max_length=4)
     has_address = models.BooleanField(default=False, db_index=True)
     commune = models.ForeignKey(
-        Commune, on_delete=models.CASCADE, related_name="parcelles"
+        Commune, on_delete=models.CASCADE, related_name="parcelles", db_index=False
     )
 
     class Meta:
@@ -63,7 +63,7 @@ class Adresse(models.Model):
 
 class ParcelleAdresse(models.Model):
     parcelle = models.ForeignKey(
-        Parcelle, on_delete=models.CASCADE, related_name="adresses_rel"
+        Parcelle, on_delete=models.CASCADE, related_name="adresses_rel", db_index=False
     )
     adresse = models.ForeignKey(
         Adresse, on_delete=models.CASCADE, related_name="parcelles_rel"
