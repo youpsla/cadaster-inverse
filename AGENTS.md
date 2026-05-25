@@ -16,6 +16,7 @@ docker compose up -d         # start (rebuild only after pyproject.toml changes)
 # uv.lock is committed for reproducible builds
 # Gotcha: compose runs `migrate` before `gunicorn` at startup — if a migration fails,
 # the web container exits immediately. Use `docker compose run --rm web` for one-off commands.
+docker compose exec web uv run python manage.py createcachetable  # after first migrate / when CACHES config changes
 
 ## Routes
 /                            → Landing page SEO (départements links + search form)
@@ -79,6 +80,12 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 - Data files in ./data/ volume; gitignored for large CSVs/GeoJSON
 - Current import scope: 31 departments (01→30 + 78), ~30M parcelles, ~7M adresses, ~7M liens
 
+### Performance
+- Composite index `(commune, has_address)` on Parcelle covers the departement/commune COUNT query; always ensure composite includes all filtered columns when FK has `db_index=False`
+- `Departement.nb_parcelles_adresse` pre-computed counter; use `dep.nb_parcelles_adresse` instead of `Parcelle.objects.filter(commune__departement=dep, has_address=True).count()` in views
+- Run `manage.py recompute_counts <dep_code>` after every import to update counters; no arg = recompute all
+- Page cache: Django `DatabaseCache` backend (shared across gunicorn workers, no Redis needed); `@cache_page(3600)` on landing/departement/commune views
+
 ### Background / Parallel Import on VPS
 - Max 3 parallel sub-agents (VPS: 6 CPUs, 7.7GB RAM), 3-4 departments each
 - Run in background: `setsid bash download_data.sh 21 > /tmp/import-21.log 2>&1 &`
@@ -130,6 +137,8 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web uv run 
 
 # 4. Import data
 docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web bash download_data.sh 01
+
+# 4b. After adding CACHES config: `manage.py createcachetable` (run once) + `docker compose restart web` (clear stale caches)
 
 # 5. Check logs
 docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f caddy
