@@ -152,8 +152,8 @@ for feat in stream_features(path):
     if dep_code not in seen_deps:
         dep_name = DEPT_NAMES.get(dep_code, dep_code).replace("'", "''")
         print(
-            f"INSERT INTO cadastre_departement (code, nom) VALUES "
-            f"('{dep_code}', '{dep_name}') ON CONFLICT DO NOTHING;"
+            f"INSERT INTO cadastre_departement (code, nom, nb_parcelles_adresse) VALUES "
+            f"('{dep_code}', '{dep_name}', 0) ON CONFLICT DO NOTHING;"
         )
         seen_deps.add(dep_code)
     if com_code not in seen_coms:
