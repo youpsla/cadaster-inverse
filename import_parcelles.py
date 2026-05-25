@@ -150,7 +150,7 @@ for feat in stream_features(path):
     com_code = idu[:5]
     dep_code = idu[:2]
     if dep_code not in seen_deps:
-        dep_name = DEPT_NAMES.get(dep_code, dep_code)
+        dep_name = DEPT_NAMES.get(dep_code, dep_code).replace("'", "''")
         print(
             f"INSERT INTO cadastre_departement (code, nom) VALUES "
             f"('{dep_code}', '{dep_name}') ON CONFLICT DO NOTHING;"
