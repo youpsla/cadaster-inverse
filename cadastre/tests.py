@@ -302,6 +302,7 @@ class TestSitemap(TestCase):
     def test_sitemap_index(self):
         response = self.client.get(reverse("sitemap-index"))
         self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "sitemap-landing")
         self.assertContains(response, "sitemap-departements")
         self.assertContains(response, "sitemap-communes")
 

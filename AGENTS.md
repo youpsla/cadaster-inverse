@@ -25,7 +25,8 @@ docker compose up -d         # start (rebuild only after pyproject.toml changes)
 /departement/<slug_dep>/<slug_commune>/  → SEO landing page for a commune (ex: /departement/ain/bourg-en-bresse/)
 /robots.txt                  → Crawl directives (disallow /admin/, /communes/, /search/)
 /sitemap.xml                 → Sitemap index
-/sitemap-<section>.xml       → Per-section sitemap (departements, communes)
+/sitemap-<section>.xml       → Per-section sitemap (landing, departements, communes)
+
 
 ### URL Format
 - **Department slug**: `slugify(nom)` — ex: `ain`, `yvelines`, `alpes-de-haute-provence`
@@ -33,6 +34,13 @@ docker compose up -d         # start (rebuild only after pyproject.toml changes)
 - No INSEE codes in URLs — slug-based for SEO
 - Slugs resolved via O(n) scan of Departement.objects.all() and Commune.filter(departement=dep) (per-department lookup — negligible, optimize with caching if scale grows)
 - Ambiguous commune names (e.g. "Aiglun" in 04 and 06) disambiguated by /departement/<slug>/ prefix
+
+## SEO
+- `_meta()` helper in views.py returns dict with keys: title, description, og_title, og_type, og_locale, og_site_name, og_url, twitter_card
+- base.html renders meta via `{% if meta %}{% with m=meta %}` block — all pages get full meta tags automatically
+- JSON-LD BreadcrumbList in base.html (departement/commune pages); WebSite+SearchAction in landing.html (via extra_head block)
+- Sitemap sections: landing (priority 1.0), departements (0.9), communes (0.7)
+- Future features tracked in docs/futur.md
 
 ## Data Import
 bash download_data.sh <dep>       # download + bulk-import a department (default: 01)
@@ -55,6 +63,7 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 # Large files (>100MB) tracked via download script, NOT committed to git
 
 ## Key Patterns
+- In base.html, `{% load static %}` must appear before any `{% static %}` tag (Django template parsing order)
 - PostGIS image: postgis/postgis:16-3.5 with platform: linux/amd64 (Apple Silicon)
 - Bulk SQL pipe: standalone Python script | docker compose exec -T db psql -U cadastre
 - HTMX search returns GeoJSON in <script> tag; JS listens to htmx:afterSwap for Leaflet

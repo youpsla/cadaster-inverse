@@ -30,6 +30,7 @@ def _meta(title, description, og_title=None, url=None):
         "og_title": og_title or title,
         "og_type": "website",
         "og_locale": "fr_FR",
+        "og_site_name": "Cadastre Inversé",
         "og_url": url or "",
         "twitter_card": "summary_large_image",
     }
@@ -50,6 +51,7 @@ def landing(request):
                 f"{nb_parcelles:,} parcelles avec adresses référencées "
                 f"dans {nb_communes:,} communes."
             ),
+            url=request.build_absolute_uri(),
         ),
     }
     return render(request, "cadastre/landing.html", context)
@@ -68,9 +70,10 @@ def departement(request, dep_slug):
         "communes": communes,
         "nb_parcelles": nb_parcelles,
         "meta": _meta(
-            title=f"Cadastre Inversé — {dep.nom} ({dep.code})",
+            title=f"Recherche de parcelles par surface du département {dep.nom}",
             description=(
-                f"Consultez les parcelles cadastrales du {dep.nom} ({dep.code}). "
+                f"Recherchez une parcelle cadastrale par sa surface "
+                f"dans le département {dep.nom} ({dep.code}). "
                 f"{nb_parcelles:,} parcelles avec adresses "
                 f"dans {communes.count()} communes."
             ),
@@ -101,9 +104,9 @@ def commune(request, dep_slug, commune_slug):
         "departement": dep,
         "nb_parcelles": nb_parcelles,
         "meta": _meta(
-            title=f"Recherche par surface de parcelle à {com.nom} ({com.code_postal})",
+            title=f"Recherche de parcelles par surface à {com.nom} ({com.code_postal})",
             description=(
-                f"Trouvez une parcelle cadastrale par sa surface "
+                f"Recherchez une parcelle cadastrale par sa surface "
                 f"à {com.nom} ({com.code_postal}). "
                 f"{nb_parcelles:,} parcelles avec adresses référencées."
             ),

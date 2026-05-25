@@ -10,9 +10,11 @@
   <meta property="og:description" content="{{ m.description }}">
   <meta property="og:type" content="{{ m.og_type }}">
   <meta property="og:locale" content="{{ m.og_locale }}">
+  <meta property="og:site_name" content="{{ m.og_site_name }}">
   {% if m.og_url %}<meta property="og:url" content="{{ m.og_url }}">{% endif %}
   <meta name="twitter:card" content="{{ m.twitter_card }}">
   <link rel="canonical" href="{% firstof m.og_url request.build_absolute_uri %}">
+  {% block og_image %}{% endblock %}
   {% endwith %}{% endif %}
   {% if breadcrumbs %}
   <script type="application/ld+json">
@@ -32,11 +34,12 @@
   }
   </script>
   {% endif %}
+  {% load static %}
   {% block extra_head %}{% endblock %}
+  <link rel="icon" type="image/svg+xml" href="{% static 'favicon.svg' %}">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://unpkg.com/htmx.org@2.0.4"></script>
-  {% load static %}
   <script src="{% static 'app.js' %}" defer></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }

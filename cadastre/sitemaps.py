@@ -5,6 +5,17 @@ from django.utils.text import slugify
 from .models import Commune, Departement
 
 
+class LandingSitemap(Sitemap):
+    changefreq = "weekly"
+    priority = 1.0
+
+    def items(self):
+        return ["landing"]
+
+    def location(self, item):
+        return reverse(item)
+
+
 class DepartementSitemap(Sitemap):
     changefreq = "weekly"
     priority = 0.9
@@ -34,6 +45,7 @@ class CommuneSitemap(Sitemap):
 
 
 sitemaps = {
+    "landing": LandingSitemap,
     "departements": DepartementSitemap,
     "communes": CommuneSitemap,
 }
