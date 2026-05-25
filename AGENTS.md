@@ -78,7 +78,7 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 - Address ↔ Parcel linkage: ParcelleAdresse junction table from BAN-PLUS WFS (not BAN CSV cad_parcelles)
 - Parcelle.has_address boolean flag; set via UPDATE after import, used to filter habitat-only parcels
 - Data files in ./data/ volume; gitignored for large CSVs/GeoJSON
-- Current import scope: 70 departments (01→70 + 78), ~71M parcelles
+- Current import scope: 96 metropolitan departments (01→95 hors 20 + 2A/2B), ~93M parcelles
 
 ### Performance
 - Composite index `(commune, has_address)` on Parcelle covers the departement/commune COUNT query; always ensure composite includes all filtered columns when FK has `db_index=False`
