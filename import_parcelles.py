@@ -1,11 +1,35 @@
 #!/usr/bin/env python3
-"""Import cadastre parcelles GeoJSON for a department. Reads data/parcelles/cadastre-{dep}-parcelles.json.gz"""
+"""Import cadastre parcelles GeoJSON for a department.
+Streams the gzipped FeatureCollection to avoid loading the entire file in memory.
+Reads data/parcelles/cadastre-{dep}-parcelles.json.gz
+"""
 import gzip
 import json
-import os
 import sys
 
 BATCH = 1000
+TOTAL_ESTIMATES = {
+    "01": 375000, "02": 480000, "03": 380000, "04": 250000, "05": 200000,
+    "06": 310000, "07": 280000, "08": 260000, "09": 260000, "10": 250000,
+    "11": 370000, "12": 400000, "13": 540000, "14": 390000, "15": 260000,
+    "16": 330000, "17": 440000, "18": 250000, "19": 230000, "21": 330000,
+    "22": 500000, "23": 190000, "24": 400000, "25": 300000, "26": 300000,
+    "27": 735000, "28": 589000, "29": 960000, "2A": 150000, "2B": 200000,
+    "30": 530000, "31": 520000, "32": 330000, "33": 680000, "34": 460000,
+    "35": 620000, "36": 220000, "37": 310000, "38": 410000, "39": 230000,
+    "40": 310000, "41": 240000, "42": 280000, "43": 210000, "44": 610000,
+    "45": 280000, "46": 250000, "47": 250000, "48": 110000, "49": 480000,
+    "50": 340000, "51": 290000, "52": 190000, "53": 240000, "54": 300000,
+    "55": 210000, "56": 520000, "57": 530000, "58": 200000, "59": 710000,
+    "60": 380000, "61": 290000, "62": 530000, "63": 380000, "64": 370000,
+    "65": 200000, "66": 200000, "67": 390000, "68": 270000, "69": 380000,
+    "70": 190000, "71": 350000, "72": 310000, "73": 220000, "74": 280000,
+    "75": 130000, "76": 510000, "77": 420000, "78": 360000, "79": 270000,
+    "80": 410000, "81": 300000, "82": 250000, "83": 470000, "84": 280000,
+    "85": 450000, "86": 280000, "87": 180000, "88": 260000, "89": 280000,
+    "90": 35000, "91": 350000, "92": 150000, "93": 70000, "94": 110000,
+    "95": 280000,
+}
 
 DEPT_NAMES = {
     "01": "Ain", "02": "Aisne", "03": "Allier", "04": "Alpes-de-Haute-Provence",
@@ -34,12 +58,73 @@ DEPT_NAMES = {
     "95": "Val-d'Oise",
 }
 
+
+def stream_features(path):
+    """Yield individual feature dicts from a gzipped GeoJSON FeatureCollection,
+    without loading the entire file into memory."""
+    with gzip.open(path, "rt") as f:
+        state = "before_features"
+        array_depth = 0
+        buf = ""
+        brace_depth = 0
+        in_string = False
+        escape = False
+        for ch in iter(lambda: f.read(1), ""):
+            if state == "before_features":
+                buf += ch
+                if '"features"' in buf or "'features'" in buf:
+                    state = "in_array"
+                    buf = ""
+                continue
+            if state == "in_array":
+                if ch == "[" and array_depth == 0:
+                    array_depth = 1
+                elif ch == "[" and array_depth > 0:
+                    array_depth += 1
+                elif ch == "]":
+                    array_depth -= 1
+                    if array_depth == 0:
+                        return
+                if ch == "{":
+                    state = "in_feature"
+                    buf = ch
+                    brace_depth = 1
+                    in_string = False
+                    escape = False
+                continue
+            if state == "in_feature":
+                if escape:
+                    buf += ch
+                    escape = False
+                    continue
+                if ch == "\\":
+                    buf += ch
+                    escape = True
+                    continue
+                if ch == '"':
+                    in_string = not in_string
+                    buf += ch
+                    continue
+                if in_string:
+                    buf += ch
+                    continue
+                if ch == "{":
+                    brace_depth += 1
+                elif ch == "}":
+                    brace_depth -= 1
+                    if brace_depth == 0:
+                        buf += ch
+                        yield json.loads(buf)
+                        state = "in_array"
+                        buf = ""
+                        continue
+                buf += ch
+
+
 dep = sys.argv[1]
 path = f"data/parcelles/cadastre-{dep}-parcelles.json.gz"
+total = TOTAL_ESTIMATES.get(dep, 1000000)
 
-with gzip.open(path, "rt") as f:
-    data = json.load(f)
-features = data["features"]
 seen_deps, seen_coms, rows = set(), set(), []
 count = 0
 
@@ -59,7 +144,7 @@ def flush():
     rows = []
 
 
-for feat in features:
+for feat in stream_features(path):
     p = feat["properties"]
     idu = p["id"]
     com_code = idu[:5]
@@ -88,8 +173,7 @@ for feat in features:
     if len(rows) >= BATCH:
         flush()
         count += BATCH
-        print(f"\r-- {count}/{len(features)} parcelles   ", file=sys.stderr, end="", flush=True)
+        print(f"\r-- {count}/{total} parcelles   ", file=sys.stderr, end="", flush=True)
 
 flush()
 print(file=sys.stderr)
-print(f"-- Done: {count + len(rows)} parcelles", file=sys.stderr)
