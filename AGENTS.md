@@ -31,7 +31,7 @@ docker compose up -d         # start (rebuild only after pyproject.toml changes)
 - **Department slug**: `slugify(nom)` — ex: `ain`, `yvelines`, `alpes-de-haute-provence`
 - **Commune slug**: `slugify(nom)` — ex: `bourg-en-bresse`, `acheres`
 - No INSEE codes in URLs — slug-based for SEO
-- Slugs resolved via O(n) scan of Departement.objects.all() and Commune.filter(departement=dep) (11 dep, ~400 com/dep — negligible, optimize with caching if scale grows)
+- Slugs resolved via O(n) scan of Departement.objects.all() and Commune.filter(departement=dep) (per-department lookup — negligible, optimize with caching if scale grows)
 - Ambiguous commune names (e.g. "Aiglun" in 04 and 06) disambiguated by /departement/<slug>/ prefix
 
 ## Data Import
@@ -39,6 +39,7 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 # Standalone Python scripts used for each phase (avoid inline -c quoting issues):
 #   Management commands in cadastre/management/commands/ also available
 #   import_parcelles.py — reads GeoJSON, outputs INSERTs (has_address=false)
+#   import_parcelles_stream.py — streaming variant for large GeoJSON (>1GB), avoids OOM on VPS
 #   import_ban.py — reads BAN CSV, outputs INSERTs
 #   download_banplus.py — queries WFS, outputs INSERTs for lien_adresse_parcelle
 # Pipeline tip: DO NOT pipe gunzip -c into import_parcelles.py (it opens the file directly);
@@ -73,6 +74,7 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 - Monitor: `ps aux | grep python` | `ls -la /tmp/import-*.log | wc -l` for progress
 - Check individual results: `docker compose exec -T db psql -U cadastre -c "SELECT count(*) FROM cadastre_parcelle WHERE idu LIKE '21%';"`
 - File sync check: `md5sum <local_file> && ssh carnac "md5sum /opt/cadastre-inverse/<file>"` — quick identity test without full diff
+
 - SEO: meta tags via template blocks (no external pkg), robots.txt via TemplateView, slugs via slugify(nom)
 - Sitemap URL pattern must be named `django.contrib.sitemaps.views.sitemap` (Django's index view reverses this internally)
 
