@@ -50,7 +50,7 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 #   download_banplus.py uses stdlib only (urllib + xml.etree.ElementTree) — zero external deps
 #   Filters via WHERE parcelle_id/adresse_id IN (SELECT ... FROM cadastre_*) to avoid FK errors
 #   Some BAN-PLUS id_adr don't exist in cadastre_adresse (newer data) — silently filtered
-# after import: UPDATE cadastre_parcelle SET has_address=true (marks urbanized parcels)
+# after import: UPDATE cadastre_parcelle SET has_address=true (dep-scope: always add WHERE idu LIKE '${DEP}%' in both UPDATE and subquery — full table scan times out at scale)
 # Large files (>100MB) tracked via download script, NOT committed to git
 
 ## Key Patterns
@@ -65,7 +65,14 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 - Address ↔ Parcel linkage: ParcelleAdresse junction table from BAN-PLUS WFS (not BAN CSV cad_parcelles)
 - Parcelle.has_address boolean flag; set via UPDATE after import, used to filter habitat-only parcels
 - Data files in ./data/ volume; gitignored for large CSVs/GeoJSON
-- Current import scope: 10 departments, ~9M parcelles, ~1.7M adresses, ~1.8M liens
+- Current import scope: 31 departments (01→30 + 78), ~30M parcelles, ~7M adresses, ~7M liens
+
+### Background / Parallel Import on VPS
+- Max 3 parallel sub-agents (VPS: 6 CPUs, 7.7GB RAM), 3-4 departments each
+- Run in background: `setsid bash download_data.sh 21 > /tmp/import-21.log 2>&1 &`
+- Monitor: `ps aux | grep python` | `ls -la /tmp/import-*.log | wc -l` for progress
+- Check individual results: `docker compose exec -T db psql -U cadastre -c "SELECT count(*) FROM cadastre_parcelle WHERE idu LIKE '21%';"`
+- File sync check: `md5sum <local_file> && ssh carnac "md5sum /opt/cadastre-inverse/<file>"` — quick identity test without full diff
 - SEO: meta tags via template blocks (no external pkg), robots.txt via TemplateView, slugs via slugify(nom)
 - Sitemap URL pattern must be named `django.contrib.sitemaps.views.sitemap` (Django's index view reverses this internally)
 
