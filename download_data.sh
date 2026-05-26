@@ -16,6 +16,19 @@ _dept_name() {
 DEPT_NAME=$(_dept_name "$DEP")
 echo "=== [$DEP] $DEPT_NAME — Download and import ==="
 
+# Detect if running inside Docker container
+if [ -f /.dockerenv ]; then
+  export PGHOST="${POSTGRES_HOST:-db}"
+  export PGUSER="${POSTGRES_USER:-cadastre}"
+  export PGPASSWORD="${POSTGRES_PASSWORD:-cadastre}"
+  export PGDATABASE="${POSTGRES_DB:-cadastre}"
+  PSQL="psql -v ON_ERROR_STOP=1"
+  RUN_MANAGE="uv run python manage.py"
+else
+  PSQL="docker compose exec -T db psql -U cadastre -v ON_ERROR_STOP=1"
+  RUN_MANAGE="docker compose exec web uv run python manage.py"
+fi
+
 mkdir -p data/parcelles data/adresses
 
 echo "[$DEP] 1/2 Downloading parcelles GeoJSON..."
@@ -28,20 +41,20 @@ curl -L -o "data/adresses/adresses-${DEP}.csv.gz" \
 
 echo ""
 echo "[$DEP] Importing parcelles (bulk SQL via psql)..."
-uv run python import_parcelles.py "$DEP" | docker compose exec -T db psql -U cadastre -v ON_ERROR_STOP=1
+uv run python import_parcelles.py "$DEP" | $PSQL
 
 echo ""
 echo "[$DEP] Importing BAN addresses..."
 gunzip -f "data/adresses/adresses-${DEP}.csv.gz"
-uv run python import_ban.py "$DEP" | docker compose exec -T db psql -U cadastre -v ON_ERROR_STOP=1
+uv run python import_ban.py "$DEP" | $PSQL
 
 echo ""
 echo "[$DEP] Creating parcel-address links via BAN-PLUS WFS..."
-uv run python download_banplus.py "$DEP" | docker compose exec -T db psql -U cadastre -v ON_ERROR_STOP=1
+uv run python download_banplus.py "$DEP" | $PSQL
 
 echo ""
 echo "[$DEP] Updating commune names from BAN data..."
-docker compose exec -T db psql -U cadastre -c "
+$PSQL -c "
 UPDATE cadastre_commune c
 SET nom = a.nom_commune
 FROM (
@@ -54,7 +67,7 @@ WHERE c.code_insee = a.code_insee
 "
 
 echo "[$DEP] Marking parcels with addresses..."
-docker compose exec -T db psql -U cadastre -c "
+$PSQL -c "
 UPDATE cadastre_parcelle
 SET has_address = true
 WHERE idu LIKE '${DEP}%'
@@ -66,11 +79,11 @@ AND idu IN (
 
 echo ""
 echo "[$DEP] Recomputing department parcelle counts..."
-docker compose exec web uv run python manage.py recompute_counts "$DEP"
+$RUN_MANAGE recompute_counts "$DEP"
 
 echo ""
 echo "[$DEP] Done ==="
-docker compose exec -T db psql -U cadastre -c "
+$PSQL -c "
 SELECT 'Parcelles' t, count(*) FROM cadastre_parcelle
 UNION ALL SELECT 'Adresses', count(*) FROM cadastre_adresse
 UNION ALL SELECT 'Liens', count(*) FROM cadastre_parcelleadresse

@@ -6,6 +6,19 @@ DEP="${COMMUNE:0:2}"
 
 echo "=== Seeding commune $COMMUNE (dep $DEP) ==="
 
+# Detect if running inside Docker container
+if [ -f /.dockerenv ]; then
+  export PGHOST="${POSTGRES_HOST:-db}"
+  export PGUSER="${POSTGRES_USER:-cadastre}"
+  export PGPASSWORD="${POSTGRES_PASSWORD:-cadastre}"
+  export PGDATABASE="${POSTGRES_DB:-cadastre}"
+  PSQL="psql -v ON_ERROR_STOP=1"
+  RUN_MANAGE="uv run python manage.py"
+else
+  PSQL="docker compose exec -T db psql -U cadastre -v ON_ERROR_STOP=1"
+  RUN_MANAGE="docker compose exec web uv run python manage.py"
+fi
+
 mkdir -p data/parcelles data/adresses
 
 # 1. Download commune-level parcelles GeoJSON
@@ -18,7 +31,7 @@ cp "data/parcelles/cadastre-${COMMUNE}-parcelles.json.gz" "data/parcelles/cadast
 
 # 2. Import parcelles
 echo "[2/5] Importing parcelles..."
-uv run python import_parcelles.py "$DEP" | docker compose exec -T db psql -U cadastre -v ON_ERROR_STOP=1
+uv run python import_parcelles.py "$DEP" | $PSQL
 
 # 3. Download and filter BAN CSV
 echo "[3/5] Downloading BAN addresses..."
@@ -30,31 +43,31 @@ gunzip -f "data/adresses/adresses-${DEP}.csv.gz"
 awk -F';' -v code="$COMMUNE" 'NR==1 || $6 == code' \
   "data/adresses/adresses-${DEP}.csv" > /tmp/adresses-filtered.csv
 mv /tmp/adresses-filtered.csv "data/adresses/adresses-${DEP}.csv"
-uv run python import_ban.py "$DEP" | docker compose exec -T db psql -U cadastre -v ON_ERROR_STOP=1
+uv run python import_ban.py "$DEP" | $PSQL
 
 # 4. BAN-PLUS address-parcel links
 echo "[4/5] Creating address-parcel links (BAN-PLUS)..."
-uv run python download_banplus.py "$DEP" | docker compose exec -T db psql -U cadastre -v ON_ERROR_STOP=1
+uv run python download_banplus.py "$DEP" | $PSQL
 
 # 5. Post-import updates
 echo "[5/5] Post-import updates..."
-docker compose exec -T db psql -U cadastre -c "
+$PSQL -c "
 UPDATE cadastre_commune c SET nom = a.nom_commune
 FROM (SELECT DISTINCT code_insee, nom_commune FROM cadastre_adresse WHERE nom_commune != '') a
 WHERE c.code_insee = a.code_insee AND c.nom = c.code_insee;
 "
-docker compose exec -T db psql -U cadastre -c "
+$PSQL -c "
 UPDATE cadastre_parcelle SET has_address = true
 WHERE idu IN (SELECT DISTINCT parcelle_id FROM cadastre_parcelleadresse);
 "
 
 echo ""
 echo "[5/5] Recomputing department parcelle counts..."
-docker compose exec web uv run python manage.py recompute_counts "$DEP"
+$RUN_MANAGE recompute_counts "$DEP"
 
 echo ""
 echo "=== Done: commune $COMMUNE ==="
-docker compose exec -T db psql -U cadastre -c "
+$PSQL -c "
 SELECT 'Parcelles' t, count(*) FROM cadastre_parcelle
 UNION ALL SELECT 'Adresses', count(*) FROM cadastre_adresse
 UNION ALL SELECT 'Liens', count(*) FROM cadastre_parcelleadresse
