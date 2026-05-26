@@ -91,11 +91,9 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 
 ### Background / Parallel Import on VPS
 - Max 3 parallel sub-agents (VPS: 6 CPUs, 7.7GB RAM), 3-4 departments each
-- Run in background: `setsid bash download_data.sh 21 > /tmp/import-21.log 2>&1 &`
-- Monitor: `ps aux | grep python` | `ls -la /tmp/import-*.log | wc -l` for progress
-- Check individual results: `docker compose exec -T db psql -U cadastre -c "SELECT count(*) FROM cadastre_parcelle WHERE idu LIKE '21%';"`
-- File sync check: `md5sum <local_file> && ssh carnac "md5sum /opt/cadastre-inverse/<file>"` — quick identity test without full diff
-- Deploy Python-only fixes (volume-mounted): `scp <local_file> carnac:/opt/cadastre-inverse/<path>` then `docker compose restart web`
+- Run in background: `docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm -d web bash download_data.sh 21`
+- Monitor: `ls -la /tmp/import-*.log | wc -l` for progress
+- Check individual results: `docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T db psql -U cadastre -c "SELECT count(*) FROM cadastre_parcelle WHERE idu LIKE '21%';"`
 
 - SEO: meta tags via template blocks (no external pkg), robots.txt via TemplateView, slugs via slugify(nom)
 - Sitemap URL pattern must be named `django.contrib.sitemaps.views.sitemap` (Django's index view reverses this internally)
@@ -125,37 +123,62 @@ GDAL/PostGIS not available on host — tests must run inside Docker.
 
 ## Production Deployment
 
+### Build image locally and push to registry
+
 ```bash
-# 0. Set your domain once, reuse in all commands
-DOMAIN=cadastre.votre-domaine.com
-
-# 1. Copy and edit env file with your domain and secrets
-cp .env.prod.example .env.prod
-# Générer SECRET_KEY : uv run python -c "from django.core.management.utils import get_random_secret_key; print(get_random_secret_key())"
-
-# 2. Deploy with your domain
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-
-# 3. First-time only: create DB schema
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web uv run python manage.py migrate
-
-# 4. Import data
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web bash download_data.sh 01
-
-# 4b. After adding CACHES config: `manage.py createcachetable` (run once) + `docker compose restart web` (clear stale caches)
-
-# 5. Check logs
-docker compose -f docker-compose.yml -f docker-compose.prod.yml logs -f caddy
-
-# 6. Rebuild after code changes
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build web
+docker compose build web
+docker tag cadastre-inverse-web registry.gitlab.com/youpsla/cadastre-inverse/web:latest
+docker push registry.gitlab.com/youpsla/cadastre-inverse/web:latest
 ```
 
-Static files are collected at build time by the Dockerfile via `collectstatic --noinput`.
-WhiteNoise serves them behind Caddy. No nginx needed for static files.
+### First-time deploy on VPS
 
-Caddy handles HTTPS (Let's Encrypt) automatically on ports 80/443.
-The Caddyfile uses `{$DOMAIN:localhost}` — empty `$DOMAIN` = localhost (no TLS).
+```bash
+# 0. Set your domain once
+DOMAIN=cadastre.votre-domaine.com
+
+# 1. Copy config files to VPS (source code stays local)
+SCP_FILES="docker-compose.yml docker-compose.prod.yml Caddyfile .env.prod"
+scp $SCP_FILES carnac:/opt/cadastre-inverse/
+
+# 2. Login to GitLab registry (once)
+ssh carnac
+cd /opt/cadastre-inverse
+docker login registry.gitlab.com
+
+# 3. Deploy
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+
+# 4. First-time only: create DB schema
+docker compose -f docker-compose.yml -f docker-compose.prod.yml exec web uv run python manage.py migrate
+
+# 5. Import data
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm web bash download_data.sh 01
+
+# 5b. After adding CACHES config: createcachetable (run once) + restart web
+```
+
+### Deploy code changes
+
+```bash
+# Local: rebuild and push
+docker compose build web
+docker tag cadastre-inverse-web registry.gitlab.com/youpsla/cadastre-inverse/web:latest
+docker push registry.gitlab.com/youpsla/cadastre-inverse/web:latest
+
+# VPS: pull new image and restart
+ssh carnac
+cd /opt/cadastre-inverse
+docker compose -f docker-compose.yml -f docker-compose.prod.yml pull
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+```
+
+### Background import on VPS
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm -d web bash download_data.sh 21
+# Monitor: docker compose -f docker-compose.yml -f docker-compose.prod.yml exec -T db psql -U cadastre -c "SELECT count(*) FROM cadastre_parcelle WHERE idu LIKE '21%';"
+```
 
 ### Gotchas
 
@@ -172,9 +195,9 @@ The Caddyfile uses `{$DOMAIN:localhost}` — empty `$DOMAIN` = localhost (no TLS
 
 ### Verify Docker configs
 ```bash
-docker compose config                       # validate dev compose
+docker compose config                       # validate dev compose (auto-merges docker-compose.override.yml)
 docker compose -f docker-compose.yml -f docker-compose.prod.yml config  # validate prod merge
-docker compose build web                    # verify Dockerfile builds cleanly
+docker compose build web                    # verify Dockerfile builds cleanly (build defined in override.yml)
 ```
 
 ### Snapshots (save/restore DB state)
