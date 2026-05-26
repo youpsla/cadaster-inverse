@@ -4,6 +4,8 @@
 Django 6, PostgreSQL 16 + PostGIS, HTMX (+ django-htmx), Leaflet/OSM, uv, Docker, gunicorn
 Nothing installed on host — everything runs in Docker
 Production VPS : Debian 12 + Docker Engine (évite les frictions Podman : ports <1024, compose non natif)
+Django project config in `config/` (settings, urls, wsgi)
+Frontend JS in `static/app.js` (Leaflet map logic)
 
 ## Quick Start
 docker compose up -d            # start PostGIS + web
