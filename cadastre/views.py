@@ -1,5 +1,6 @@
 import json
 
+from django.db.models import Sum
 from django.http import Http404
 from django.shortcuts import render
 from django.urls import reverse
@@ -40,7 +41,7 @@ def _meta(title, description, og_title=None, url=None):
 @cache_page(60 * 60)
 def landing(request):
     departements = Departement.objects.all()
-    nb_parcelles = Parcelle.objects.filter(has_address=True).count()
+    nb_parcelles = Departement.objects.aggregate(total=Sum("nb_parcelles_adresse"))["total"] or 0
     nb_communes = Commune.objects.count()
     context = {
         "departements": departements,

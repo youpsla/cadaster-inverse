@@ -83,6 +83,7 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 ### Performance
 - Composite index `(commune, has_address)` on Parcelle covers the departement/commune COUNT query; always ensure composite includes all filtered columns when FK has `db_index=False`
 - `Departement.nb_parcelles_adresse` pre-computed counter; use `dep.nb_parcelles_adresse` instead of `Parcelle.objects.filter(commune__departement=dep, has_address=True).count()` in views
+- Landing page global count: use `Departement.objects.aggregate(total=Sum('nb_parcelles_adresse'))` — `Parcelle.objects.filter(has_address=True).count()` is a full table scan (~93M rows) that times out the worker
 - Run `manage.py recompute_counts <dep_code>` after every import to update counters; no arg = recompute all
 - Page cache: Django `DatabaseCache` backend (shared across gunicorn workers, no Redis needed); `@cache_page(3600)` on landing/departement/commune views
 
@@ -92,6 +93,7 @@ bash download_data.sh <dep>       # download + bulk-import a department (default
 - Monitor: `ps aux | grep python` | `ls -la /tmp/import-*.log | wc -l` for progress
 - Check individual results: `docker compose exec -T db psql -U cadastre -c "SELECT count(*) FROM cadastre_parcelle WHERE idu LIKE '21%';"`
 - File sync check: `md5sum <local_file> && ssh carnac "md5sum /opt/cadastre-inverse/<file>"` — quick identity test without full diff
+- Deploy Python-only fixes (volume-mounted): `scp <local_file> carnac:/opt/cadastre-inverse/<path>` then `docker compose restart web`
 
 - SEO: meta tags via template blocks (no external pkg), robots.txt via TemplateView, slugs via slugify(nom)
 - Sitemap URL pattern must be named `django.contrib.sitemaps.views.sitemap` (Django's index view reverses this internally)
