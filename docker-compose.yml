@@ -18,23 +18,9 @@ services:
       retries: 5
 
   web:
-    build: .
-    command: >
-      sh -c "uv run python manage.py migrate &&
-             uv run gunicorn config.wsgi -b 0.0.0.0:8000 --reload --reload-extra-file /app/cadastre/templates"
-    volumes:
-      - ./data:/data
-      - ./static:/app/static
-      - ./cadastre:/app/cadastre
-      - ./config:/app/config
-      - ./manage.py:/app/manage.py
-    ports:
-      - "8000:8000"
     depends_on:
       db:
         condition: service_healthy
-    env_file:
-      - .env
 
 volumes:
   pgdata:

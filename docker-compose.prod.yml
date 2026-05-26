@@ -13,11 +13,13 @@ services:
         max-file: "3"
 
   web:
+    image: registry.gitlab.com/youpsla/cadastre-inverse/web:latest
     restart: unless-stopped
     command: >
       sh -c "uv run python manage.py migrate &&
              uv run gunicorn config.wsgi -b 0.0.0.0:8000 -w 2 --access-logfile -"
-    volumes: []
+    volumes:
+      - data_volume:/app/data
     env_file:
       - .env.prod
     healthcheck:
@@ -52,5 +54,6 @@ services:
         max-file: "3"
 
 volumes:
+  data_volume:
   caddy_data:
   caddy_config:
